@@ -14,12 +14,14 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100dvh; /* Учитывает панели мобильных браузеров */
+    height: 100vh;
+    height: 100dvh;
     background-color: var(--bg-page);
     overflow: hidden;
     font-family: 'IBM Plex Mono', monospace, Courier New;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 /* --- MAIN WRAPPER --- */
@@ -28,10 +30,10 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 15px;
+    gap: 20px;
     width: 100%;
     height: 100%;
-    padding: 15px;
+    padding: 40px 20px;
 }
 
 #game-container {
@@ -39,7 +41,7 @@ body {
     position: relative;
     width: 100%;
     max-width: 400px;
-    aspect-ratio: 2 / 3; /* Жестко держим пропорции 400x600 */
+    aspect-ratio: 2 / 3;
 }
 
 canvas {
@@ -52,6 +54,7 @@ canvas {
     height: 100%;
     touch-action: none;
 }
+
 /* --- GAME OVER & SHOP SCREENS --- */
 #gameOverScreen, #shopScreen {
     grid-area: 1 / 1;
@@ -240,7 +243,7 @@ canvas {
     filter: invert(1);
 }
 
-/* --- PREVIEW STYLES (УПРОЩЁННАЯ ВЕРСИЯ) --- */
+/* --- PREVIEW STYLES --- */
 .skin-preview {
     width: 30px;
     height: 30px;
@@ -256,15 +259,12 @@ canvas {
     filter: brightness(1.2);
 }
 
-/* Стили для превью аксессуаров (УПРАЩЁННАЯ) */
 .preview-collar {
     background: linear-gradient(to top, #32CD32 20%, transparent 20%) !important;
 }
 
-/* УБРАНО: rotation-анимация! Теперь статично */
 .preview-star {
     background: radial-gradient(circle, #FFFF00 10%, transparent 11%) !important;
-    /* animation removed */
 }
 
 .preview-halo {
@@ -272,6 +272,7 @@ canvas {
     border-radius: 50% 50% 0 0 / 10px 10px 0 0;
     background: transparent !important;
 }
+
 /* --- BUTTON STYLES --- */
 .skin-name {
     font-size: 14px;
@@ -290,66 +291,45 @@ canvas {
     font-weight: bold;
 }
 
-
-/* --- MOBILE CONTROLS --- */
-#mobile-controls {
-    display: none;
-    justify-content: center;
-    gap: 40px;
-    width: 100%;
-    margin-top: 30px;
-    padding: 20px;
-}
-
-.ctrl-btn {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    border: 3px solid var(--accent-color);
-    background: rgba(255, 0, 112, 0.2);
-    color: white;
-    font-size: 30px;
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: all 0.2s ease-in-out;
-}
-
-.ctrl-btn:active {
-    background: var(--accent-color);
-    transform: scale(0.95);
-    box-shadow: 0 4px 15px rgba(255, 0, 112, 0.5);
-}
-
 /* --- ANIMATIONS --- */
 @keyframes slideDown {
     from { transform: translateY(-30px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* --- RESPONSIVE DESIGN --- */
+/* --- RESPONSIVE DESIGN (ПОЛНОЭКРАННЫЙ МОБИЛЬНЫЙ РЕЖИМ БЕЗ РАМОК) --- */
 @media (max-width: 768px) {
     .game-wrapper {
-        justify-content: center;
-        padding: 10px;
+        padding: 0;
+        gap: 0;
+        width: 100vw;
+        height: 100dvh;
     }
 
     #game-container {
-        width: min(95vw, 62dvh); /* Поле станет заметно крупнее */
-        max-width: 400px;
+        width: 100vw;
+        height: 100dvh;
+        max-width: none;
+        aspect-ratio: auto;
+    }
+
+    canvas {
+        border: none;
+        box-shadow: none;
+    }
+
+    #gameOverScreen, #shopScreen {
+        margin: 0;
+        border-radius: 0;
+        width: 100%;
+        height: 100%;
     }
 }
 
 @media (max-width: 480px) {
     #gameOverScreen h2, #shopScreen h2 {
-        font-size: 24px;
-        margin-bottom: 8px;
+        font-size: 26px;
+        margin-bottom: 10px;
     }
 
     #gameOverScreen p, #shopScreen p {
@@ -359,35 +339,35 @@ canvas {
 
     .shop-tabs {
         gap: 6px;
-        margin-bottom: 12px;
-    }
-
-    .tab-btn {
-        padding: 6px 10px;
-        font-size: 12px;
-    }
-
-    #skinsList {
-        width: 90%;
-        gap: 10px;
         margin-bottom: 15px;
     }
 
+    .tab-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    #skinsList {
+        width: 88%;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
     .skin-item {
-        padding: 6px;
+        padding: 10px;
     }
 
     .skin-preview {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
     }
 
     .skin-name {
-        font-size: 12px;
+        font-size: 13px;
     }
 
     .restart-btn {
-        padding: 8px 16px;
-        font-size: 14px;
+        padding: 12px 24px;
+        font-size: 15px;
     }
 }

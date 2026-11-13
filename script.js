@@ -9,8 +9,17 @@ const totalItemsText = document.getElementById('totalItems');
 const shopBalanceText = document.getElementById('shopBalance');
 const skinsListDiv = document.getElementById('skinsList');
 
-canvas.width = 400;
-canvas.height = 600;
+function resizeCanvas() {
+    if (window.innerWidth <= 768) {
+        const aspect = window.innerWidth / window.innerHeight;
+        canvas.height = 600;
+        canvas.width = Math.round(600 * aspect);
+    } else {
+        canvas.width = 400;
+        canvas.height = 600;
+    }
+}
+resizeCanvas();
 
 // --- КОНФИГУРАЦИЯ СКИНОВ ---
 const BODY_SKINS = {
@@ -64,13 +73,24 @@ let bestScore = parseInt(getFromStorage('pixelCatBestScore', '0')) || 0;
 let allTimeCollectibles = parseInt(getFromStorage('pixelCatTotalItems', '0')) || 0;
 
 const cat = {
-    x: 185, y: 300, width: 30, height: 30,
+    x: canvas.width / 2 - 15, y: 300, width: 30, height: 30,
     dy: 0, jumpForce: -10, gravity: 0.2, speed: 4,
     facing: 'right', scaleX: 1.0, scaleY: 1.0
 };
 
 const platforms = [], collectibles = [], particles = [], stars = [], enemies = [];
 const platWidth = 60, platHeight = 10, segmentWidth = 6, starCount = 50;
+
+window.addEventListener('resize', () => {
+    const oldWidth = canvas.width;
+    resizeCanvas();
+    const ratio = canvas.width / oldWidth;
+    cat.x *= ratio;
+    platforms.forEach(p => p.x *= ratio);
+    collectibles.forEach(c => c.x *= ratio);
+    enemies.forEach(e => e.x *= ratio);
+    stars.forEach(s => s.x *= ratio);
+});
 
 let meowSound = null;
 try { meowSound = new Audio('sounds/meow.mp3'); } catch (e) {}
@@ -339,39 +359,47 @@ function drawCollectibles() {
 }
 
 function drawEnemies() {
-    enemies.forEach(enemy => {
-        if (enemy.defeated) return;
+    enemies.forEach(bird => {
         ctx.save();
-        ctx.translate(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
-        if (enemy.speedX < 0) ctx.scale(-1, 1);
+        ctx.translate(bird.x + bird.width / 2, bird.y + bird.height / 2);
+        if (bird.speedX < 0) ctx.scale(-1, 1);
+
+        const w = bird.width;
+        const h = bird.height;
+
+        // Хвост
+        ctx.fillStyle = '#B00020';
+        ctx.fillRect(-w / 2 - 4, -2, 6, 6);
 
         // Тело птицы
         ctx.fillStyle = colors.enemy;
-        ctx.fillRect(-12, -6, 22, 12);
+        ctx.fillRect(-w / 2 + 2, -h / 2 + 2, w - 8, h - 2);
 
         // Голова
-        ctx.fillRect(6, -10, 10, 10);
-
-        // Хвост
-        ctx.fillRect(-18, -4, 6, 4);
-        ctx.fillRect(-16, 0, 4, 4);
+        ctx.fillRect(w / 2 - 12, -h / 2 - 2, 10, 10);
 
         // Клюв
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
-        ctx.moveTo(16, -7);
-        ctx.lineTo(22, -4);
-        ctx.lineTo(16, -1);
+        ctx.moveTo(w / 2 - 2, -h / 2 + 1);
+        ctx.lineTo(w / 2 + 5, -h / 2 + 4);
+        ctx.lineTo(w / 2 - 2, -h / 2 + 7);
         ctx.fill();
 
         // Глаз
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(11, -8, 3, 3);
+        ctx.fillRect(w / 2 - 6, -h / 2, 3, 3);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(w / 2 - 5, -h / 2 + 1, 2, 2);
 
-        // Анимация взмаха крыла
-        const wingFlap = Math.sin(Date.now() * 0.025) * 7;
-        ctx.fillStyle = '#FF7070';
-        ctx.fillRect(-4, -2 + (wingFlap > 0 ? 0 : wingFlap), 10, Math.abs(wingFlap) + 3);
+        // Анимированное крыло
+        const flap = Math.sin(Date.now() * 0.025);
+        ctx.fillStyle = '#FF6B6B';
+        if (flap > 0) {
+            ctx.fillRect(-4, -h / 2 - 6, 10, 8);
+        } else {
+            ctx.fillRect(-4, 0, 10, 7);
+        }
 
         ctx.restore();
     });
@@ -400,7 +428,7 @@ function drawControlHint() {
 
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 2;
-    ctx.setLineDash([6, 6]);
+    ctx.setLineDash([8, 8]);
     ctx.beginPath();
     ctx.moveTo(canvas.width / 2, canvas.height - 110);
     ctx.lineTo(canvas.width / 2, canvas.height - 30);
@@ -419,8 +447,8 @@ function drawControlHint() {
 function drawScore() {
     ctx.fillStyle = 'white'; ctx.font = '20px IBM Plex Mono';
     ctx.textAlign = 'left';
-    ctx.fillText(`Score: ${Math.floor(score)}`, 20, 30);
-    ctx.fillText(`Рыбы: ${collectiblesCount}`, 20, 55);
+    ctx.fillText(`Score: ${Math.floor(score)}`, 20, 35);
+    ctx.fillText(`Рыбы: ${collectiblesCount}`, 20, 60);
 }
 
 // --- ОБНОВЛЕНИЕ ФИЗИКИ И ПЕРЕРАБОТКА ---
@@ -453,40 +481,38 @@ function update() {
     });
 
     // Движение птиц и проверка столкновения
-    enemies.forEach(enemy => {
-        if (enemy.defeated) return;
-        enemy.x += enemy.speedX;
-        if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
-            enemy.speedX *= -1;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const bird = enemies[i];
+        bird.x += bird.speedX;
+        if (bird.x <= 0 || bird.x + bird.width >= canvas.width) {
+            bird.speedX *= -1;
         }
 
         const pad = 3;
         const isColliding =
-            cat.x + pad < enemy.x + enemy.width - pad &&
-            cat.x + cat.width - pad > enemy.x + pad &&
-            cat.y + pad < enemy.y + enemy.height - pad &&
-            cat.y + cat.height - pad > enemy.y + pad;
+            cat.x + pad < bird.x + bird.width - pad &&
+            cat.x + cat.width - pad > bird.x + pad &&
+            cat.y + pad < bird.y + bird.height - pad &&
+            cat.y + cat.height - pad > bird.y + pad;
 
         if (isColliding) {
-            // Проверяем, падает ли кот сверху на верхнюю половину птицы
-            const prevCatBottom = (cat.y - cat.dy) + cat.height;
-            const isStompFromAbove = cat.dy > 0 && prevCatBottom <= enemy.y + enemy.height * 0.65;
+            const catFeetY = cat.y + cat.height;
+            const birdTopZone = bird.y + bird.height * 0.65;
 
-            if (isStompFromAbove) {
-                // Прыжок по верху птицы
-                enemy.defeated = true;
+            if (cat.dy > 0 && catFeetY - cat.dy <= birdTopZone) {
                 cat.scaleY = 0.10;
                 cat.scaleX = 0.40;
                 cat.dy = cat.jumpForce * 1.15;
                 score += 100;
-                spawnParticles(enemy.x, enemy.y, colors.enemy);
+                spawnParticles(bird.x, bird.y, colors.enemy);
+                enemies.splice(i, 1);
             } else {
-                // Удар снизу или сбоку = проигрыш
                 spawnParticles(cat.x, cat.y, colors.enemy);
                 endGame();
+                break;
             }
         }
-    });
+    }
 
     collectibles.forEach(item => {
         if (!item.collected && cat.x < item.x + item.width && cat.x + cat.width > item.x && cat.y < item.y + item.height && cat.y + cat.height > item.y) {
@@ -538,7 +564,6 @@ function handleRecycle() {
             p.type = pType.type; p.broken = false; p.hits = 0; p.damageMap = [];
             if (pType.speedX) p.speedX = pType.speedX;
 
-            // Генерация новой рыбки над переработанной платформой (шанс 40%)
             if (Math.random() < 0.4) {
                 collectibles.push({
                     x: p.x + Math.random() * (platWidth - 15),
@@ -550,7 +575,6 @@ function handleRecycle() {
                 });
             }
 
-            // Постоянный спавн птиц после 400 пикселей высоты (шанс 18%)
             if (totalHeight > 400 && Math.random() < 0.18) {
                 const tooClose = enemies.some(e => Math.abs(e.y - (p.y - 35)) < 180);
                 if (!tooClose) {
@@ -558,9 +582,8 @@ function handleRecycle() {
                         x: Math.random() * (canvas.width - 36),
                         y: p.y - 35,
                         width: 36,
-                        height: 16,
-                        speedX: (Math.random() * 1.5 + 1.2) * (Math.random() > 0.5 ? 1 : -1),
-                        defeated: false
+                        height: 18,
+                        speedX: (Math.random() * 1.5 + 1.2) * (Math.random() > 0.5 ? 1 : -1)
                     });
                 }
             }
@@ -574,7 +597,7 @@ function handleRecycle() {
     }
 
     for (let i = enemies.length - 1; i >= 0; i--) {
-        if (enemies[i].defeated || enemies[i].y > canvas.height) {
+        if (enemies[i].y > canvas.height) {
             enemies.splice(i, 1);
         }
     }
@@ -599,7 +622,8 @@ function endGame() {
 
 function resetGame() {
     score = 0; totalHeight = 0; collectiblesCount = 0;
-    cat.x = 185; cat.y = 300; cat.dy = 0; cat.facing = 'right';
+    cat.x = canvas.width / 2 - cat.width / 2;
+    cat.y = 300; cat.dy = 0; cat.facing = 'right';
     cat.scaleX = 1.0; cat.scaleY = 1.0;
     isGameOver = false;
     if (gameOverScreen) gameOverScreen.style.display = 'none';
