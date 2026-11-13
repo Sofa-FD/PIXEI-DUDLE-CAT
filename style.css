@@ -1,0 +1,370 @@
+/* --- ОСНОВНЫЕ СТИЛИ --- */
+* { box-sizing: border-box; }
+
+:root {
+    --bg-page: #1a1a1a;
+    --bg-canvas: #2a2a2a;
+    --accent-color: #FF0070;
+    --accent-hover: #FF409E;
+    --text-main: #FFFFFF;
+}
+
+body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: var(--bg-page);
+    overflow: hidden;
+    font-family: 'IBM Plex Mono', monospace, Courier New;
+}
+
+/* --- MAIN WRAPPER --- */
+.game-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    padding: 40px 20px;
+}
+
+#game-container {
+    display: grid;
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+}
+
+canvas {
+    grid-area: 1 / 1;
+    border: 4px solid var(--accent-color);
+    background-color: var(--bg-canvas);
+    box-shadow: 0 0 20px var(--accent-color), inset 0 0 10px rgba(0, 0, 0, 0.5);
+    display: block;
+    width: 100%;
+    height: auto;
+    touch-action: none;
+}
+
+/* --- GAME OVER & SHOP SCREENS --- */
+#gameOverScreen, #shopScreen {
+    grid-area: 1 / 1;
+    margin: 4px;
+    background: rgba(26, 26, 26, 0.95);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-main);
+    text-align: center;
+    border-radius: 4px;
+    z-index: 999;
+}
+
+#gameOverScreen h2, #shopScreen h2 {
+    color: var(--accent-color);
+    font-size: 32px;
+    margin-bottom: 10px;
+    animation: slideDown 0.4s ease-out;
+}
+
+#gameOverScreen p, #shopScreen p {
+    font-size: 20px;
+    margin-bottom: 20px;
+}
+
+.restart-btn {
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--accent-color);
+    border: 2px solid var(--accent-color);
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-transform: uppercase;
+    margin: 5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.restart-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 0, 112, 0.2), transparent);
+    transition: 0.5s;
+}
+
+.restart-btn:hover::before {
+    left: 100%;
+}
+
+.restart-btn:hover {
+    background: var(--accent-color);
+    color: white;
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 4px 15px rgba(255, 0, 112, 0.4);
+}
+
+.restart-btn:active {
+    transform: translateY(-1px) scale(0.98);
+}
+
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+/* --- SHOP TABS --- */
+.shop-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    padding: 8px 15px;
+    background: #333;
+    color: white;
+    border: 2px solid #444;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    border-radius: 5px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.tab-btn::before {
+    content: '';
+    position: absolute;
+    bottom: -2px; left: 50%;
+    width: 0; height: 3px;
+    background: var(--accent-color);
+    transform: translateX(-50%);
+    transition: 0.4s;
+}
+
+.tab-btn:hover::before {
+    width: 100%;
+}
+
+.tab-btn.active {
+    border-color: var(--accent-color);
+    background: var(--accent-color);
+    color: white;
+}
+
+.tab-btn.active::before {
+    width: 85%;
+}
+
+#shopBalance {
+    color: #FFB84D;
+    margin-bottom: 20px;
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255, 184, 77, 0.3);
+}
+
+/* --- SKINS LIST & ITEM --- */
+#skinsList {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 30px;
+    width: 80%;
+}
+
+.skin-item {
+    background: #333;
+    border: 2px solid #444;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.skin-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    background: linear-gradient(135deg, transparent, rgba(255, 0, 112, 0.2), transparent);
+    -webkit-mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+    mask-composite:
+            exclude,
+            intersect;
+}
+
+.skin-item:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 4px 15px rgba(255, 0, 112, 0.3);
+}
+
+.skin-item.active {
+    border-color: var(--accent-color);
+    background: #442233;
+    transform: translateY(-2px);
+}
+
+.skin-item.locked {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.skin-item.locked:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.skin-item.active::after {
+    filter: invert(1);
+}
+
+/* --- PREVIEW STYLES (УПРОЩЁННАЯ ВЕРСИЯ) --- */
+.skin-preview {
+    width: 30px;
+    height: 30px;
+    border: 1px solid white;
+    position: relative;
+    overflow: hidden;
+    background: #222;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.skin-item:hover .skin-preview {
+    transform: scale(1.1);
+    filter: brightness(1.2);
+}
+
+/* Стили для превью аксессуаров (УПРАЩЁННАЯ) */
+.preview-collar {
+    background: linear-gradient(to top, #32CD32 20%, transparent 20%) !important;
+}
+
+/* УБРАНО: rotation-анимация! Теперь статично */
+.preview-star {
+    background: radial-gradient(circle, #FFFF00 10%, transparent 11%) !important;
+    /* animation removed */
+}
+
+.preview-halo {
+    border-top: 4px solid #FFFFFF !important;
+    border-radius: 50% 50% 0 0 / 10px 10px 0 0;
+    background: transparent !important;
+}
+/* --- BUTTON STYLES --- */
+.skin-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--text-main);
+    transition: all 0.2s;
+}
+
+.skin-item:hover .skin-name {
+    color: var(--accent-color);
+}
+
+.skin-cost {
+    font-size: 12px;
+    color: #FFB84D;
+    font-weight: bold;
+}
+
+
+/* --- MOBILE CONTROLS --- */
+#mobile-controls {
+    display: none;
+    justify-content: center;
+    gap: 40px;
+    width: 100%;
+    margin-top: 30px;
+    padding: 20px;
+}
+
+.ctrl-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 3px solid var(--accent-color);
+    background: rgba(255, 0, 112, 0.2);
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease-in-out;
+}
+
+.ctrl-btn:active {
+    background: var(--accent-color);
+    transform: scale(0.95);
+    box-shadow: 0 4px 15px rgba(255, 0, 112, 0.5);
+}
+
+/* --- ANIMATIONS --- */
+@keyframes slideDown {
+    from { transform: translateY(-30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* --- RESPONSIVE DESIGN --- */
+@media (max-width: 768px) {
+    #mobile-controls { display: flex; }
+
+    .skin-item {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .skin-preview {
+        width: 28px;
+        height: 28px;
+    }
+}
+
+@media (max-width: 600px) {
+    #game-container {
+        max-width: 95vw;
+    }
+
+    canvas {
+        max-height: 80vh;
+    }
+
+    .restart-btn {
+        padding: 12px 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    #game-overScreen, #shopScreen {
+        width: 90vw;
+    }
+
+    #skinsList {
+        grid-template-columns: 1fr;
+    }
+}

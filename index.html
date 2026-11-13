@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pixel Cat Jump - Final</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="game-wrapper">
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Экран Game Over -->
+        <div id="gameOverScreen">
+            <h2>GAME OVER</h2>
+            <p id="finalScore">Твой счёт: 0</p>
+            <p id="bestScore">Рекорд: 0</p>
+            <p id="totalItems">Всего рыбов: 0</p>
+            <div class="button-group">
+                <button class="restart-btn" onclick="resetGame()">Играть снова</button>
+                <button class="restart-btn" onclick="openShop()">Магазин</button>
+            </div>
+        </div>
+
+        <!-- Экран Магазина -->
+        <div id="shopScreen">
+            <h2>МАГАЗИН РЫБ</h2>
+            <p id="shopBalance">Рыбы: 0</p>
+
+            <!-- Вкладки для выбора категории -->
+            <div class="shop-tabs">
+                <button id="tab-body" class="tab-btn active" onclick="switchTab('body')">Тело</button>
+                <button id="tab-eyes" class="tab-btn" onclick="switchTab('eyes')">Глаза</button>
+                <button id="tab-acc" class="tab-btn" onclick="switchTab('acc')">Украшения</button>
+            </div>
+
+            <div id="skinsList"></div>
+            <button class="restart-btn" onclick="closeShop()">Назад</button>
+        </div>
+    </div>
+
+    <div id="mobile-controls">
+        <button id="btn-left" class="ctrl-btn">←</button>
+        <button id="btn-right" class="ctrl-btn">→</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
