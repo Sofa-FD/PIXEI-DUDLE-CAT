@@ -153,44 +153,35 @@ function buyOrEquip(id) {
     const skin = config[id];
     let unlocked = currentTab === 'body' ? unlockedBodySkins : (currentTab === 'eyes' ? unlockedEyeSkins : unlockedAccSkins);
 
-    if (unlocked.includes(id)) {
-        // ✅ Если скин уже куплен — сразу сменить активный
-        activeBodySkin = id;
-        saveToStorage('pixelCatActiveBodySkin', activeBodySkin);
-    } else {
-        // ✅ Если скин не куплен и есть деньги — купить его
+    if (!unlocked.includes(id)) {
         if (allTimeCollectibles >= skin.cost) {
             allTimeCollectibles -= skin.cost;
             saveToStorage('pixelCatTotalItems', allTimeCollectibles);
-
             unlocked.push(id);
-            if (currentTab === 'body') {
-                saveToStorage('pixelCatUnlockedBodySkins', JSON.stringify(unlockedBodySkins));
-            } else if (currentTab === 'eyes') {
-                saveToStorage('pixelCatUnlockedEyeSkins', JSON.stringify(unlockedEyeSkins));
-            } else {
-                saveToStorage('pixelCatUnlockedAccSkins', JSON.stringify(unlockedAccSkins));
-            }
+
+            if (currentTab === 'body') saveToStorage('pixelCatUnlockedBodySkins', JSON.stringify(unlockedBodySkins));
+            else if (currentTab === 'eyes') saveToStorage('pixelCatUnlockedEyeSkins', JSON.stringify(unlockedEyeSkins));
+            else saveToStorage('pixelCatUnlockedAccSkins', JSON.stringify(unlockedAccSkins));
         } else {
-            alert(`Нужно ${skin.cost} 🐟 для покупки!`); return;
+            alert(`Нужно ${skin.cost} 🐟 для покупки!`);
+            return;
         }
     }
 
-    // ✅ СОХРАТИМ ТЕКУЩИЙ АКТИВНЫЙ СКИН (даже если он был куплен ранее)
     if (currentTab === 'body') {
         activeBodySkin = id;
-        saveToStorage('pixelCatUnlockedBodySkins', JSON.stringify(unlockedBodySkins));
+        saveToStorage('pixelCatActiveBodySkin', activeBodySkin);
     } else if (currentTab === 'eyes') {
         activeEyeSkin = id;
-        saveToStorage('pixelCatUnlockedEyeSkins', JSON.stringify(unlockedEyeSkins));
+        saveToStorage('pixelCatActiveEyeSkin', activeEyeSkin);
     } else {
         activeAccSkin = id;
-        saveToStorage('pixelCatUnlockedAccSkins', JSON.stringify(unlockedAccSkins));
+        saveToStorage('pixelCatActiveAccSkin', activeAccSkin);
     }
 
-    // ✅ ОТРИСОВКА МАГАЗИНА ПОСЛЕ СМЕНЫ СКИНА
     renderShop();
 }
+
 
 function initBackground() {
     stars.length = 0;
@@ -207,6 +198,7 @@ function getRandomPlatformType() {
     return { type: 'moving', speedX: (Math.random() + 1) * (Math.random() > 0.5 ? 1 : -1) };
 }
 
+// УПРАВЛЕНИЕ РЫБКАМИ
 function createPlatforms() {
     platforms.length = 0; collectibles.length = 0;
     platforms.push({ x: cat.x - (platWidth / 2) + (cat.width / 2), y: cat.y + cat.height + 10, type: 'normal', hits: 0, broken: false, damageMap: [] });
@@ -214,7 +206,7 @@ function createPlatforms() {
         const pType = getRandomPlatformType();
         const p = { x: Math.random() * (canvas.width - platWidth), y: i * 80, ...pType, hits: 0, broken: false, damageMap: [] };
         platforms.push(p);
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.5) {
             collectibles.push({ x: p.x + Math.random() * (platWidth - 15), y: p.y - 20 - Math.random() * 20, width: 15, height: 15, type: 'fish', collected: false });
         }
     }
@@ -402,14 +394,46 @@ function handleRecycle() {
             let highestY = 0;
             if (platforms.length > 0) highestY = Math.min(...platforms.map(pl => pl.y));
             if (highestY === Infinity || isNaN(highestY)) highestY = 0;
+
             p.y = highestY - (60 + Math.random() * 40);
             p.x = Math.random() * (canvas.width - platWidth);
-            p.type = pType.type; p.broken = false; p.hits = 0; p.damageMap = [];
+            p.type = pType.type;
+            p.broken = false;
+            p.hits = 0;
+            p.damageMap = [];
             if (pType.speedX) p.speedX = pType.speedX;
+
+            // Генерация новой рыбки над переработанной платформой (шанс 40%)
+            if (Math.random() < 0.1) {
+                collectibles.push({
+                    x: p.x + Math.random() * (platWidth - 15),
+                    y: p.y - 25 - Math.random() * 15,
+                    width: 15,
+                    height: 15,
+                    type: 'fish',
+                    collected: false
+                });
+            }
         }
     });
-    stars.forEach(s => { if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; } });
+
+    // Удаляем рыбок, которые уже собраны или улетели за нижний край экрана
+    for (let i = collectibles.length - 1; i >= 0; i--) {
+        if (collectibles[i].collected || collectibles[i].y > canvas.height) {
+            collectibles.splice(i, 1);
+        }
+    }
+
+    stars.forEach(s => {
+        if (s.y > canvas.height) {
+            s.y = 0;
+            s.x = Math.random() * canvas.width;
+        }
+    });
+
+
 }
+
 
 function endGame() {
     try {
@@ -452,6 +476,39 @@ function loop() {
     } catch (e) { console.error(e); }
     requestAnimationFrame(loop);
 }
+
+// --- СЕНСОРНОЕ УПРАВЛЕНИЕ ПО ПОЛОВИНАМ ЭКРАНА ---
+function handleTouchControl(e) {
+    // Не перехватываем касания, если открыто меню проигрыша или магазин
+    if (isGameOver) return;
+    if (e.cancelable) e.preventDefault();
+
+    if (e.touches.length === 0) {
+        keys['ArrowLeft'] = false;
+        keys['ArrowRight'] = false;
+        return;
+    }
+
+    // Берем последнее (самое свежее) касание пальца
+    const latestTouch = e.touches[e.touches.length - 1];
+    const screenCenter = window.innerWidth / 2;
+
+    if (latestTouch.clientX < screenCenter) {
+        keys['ArrowLeft'] = true;
+        keys['ArrowRight'] = false;
+    } else {
+        keys['ArrowRight'] = true;
+        keys['ArrowLeft'] = false;
+    }
+}
+
+window.addEventListener('touchstart', handleTouchControl, { passive: false });
+window.addEventListener('touchmove', handleTouchControl, { passive: false });
+window.addEventListener('touchend', handleTouchControl, { passive: false });
+window.addEventListener('touchcancel', () => {
+    keys['ArrowLeft'] = false;
+    keys['ArrowRight'] = false;
+});
 
 // --- ЗАПУСК ИГРЫ ---
 initBackground();

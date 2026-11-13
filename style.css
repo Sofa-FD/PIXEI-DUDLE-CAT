@@ -14,10 +14,12 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    height: 100dvh; /* Учитывает панели мобильных браузеров */
     background-color: var(--bg-page);
     overflow: hidden;
     font-family: 'IBM Plex Mono', monospace, Courier New;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 /* --- MAIN WRAPPER --- */
@@ -26,9 +28,10 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 20px;
+    gap: 15px;
     width: 100%;
-    padding: 40px 20px;
+    height: 100%;
+    padding: 15px;
 }
 
 #game-container {
@@ -36,6 +39,7 @@ body {
     position: relative;
     width: 100%;
     max-width: 400px;
+    aspect-ratio: 2 / 3; /* Жестко держим пропорции 400x600 */
 }
 
 canvas {
@@ -45,10 +49,9 @@ canvas {
     box-shadow: 0 0 20px var(--accent-color), inset 0 0 10px rgba(0, 0, 0, 0.5);
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
     touch-action: none;
 }
-
 /* --- GAME OVER & SHOP SCREENS --- */
 #gameOverScreen, #shopScreen {
     grid-area: 1 / 1;
@@ -332,39 +335,59 @@ canvas {
 
 /* --- RESPONSIVE DESIGN --- */
 @media (max-width: 768px) {
-    #mobile-controls { display: flex; }
-
-    .skin-item {
-        padding: 8px;
-        font-size: 12px;
+    .game-wrapper {
+        justify-content: center;
+        padding: 10px;
     }
 
-    .skin-preview {
-        width: 28px;
-        height: 28px;
-    }
-}
-
-@media (max-width: 600px) {
     #game-container {
-        max-width: 95vw;
-    }
-
-    canvas {
-        max-height: 80vh;
-    }
-
-    .restart-btn {
-        padding: 12px 24px;
+        width: min(95vw, 62dvh); /* Поле станет заметно крупнее */
+        max-width: 400px;
     }
 }
 
 @media (max-width: 480px) {
-    #game-overScreen, #shopScreen {
-        width: 90vw;
+    #gameOverScreen h2, #shopScreen h2 {
+        font-size: 24px;
+        margin-bottom: 8px;
+    }
+
+    #gameOverScreen p, #shopScreen p {
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+
+    .shop-tabs {
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+
+    .tab-btn {
+        padding: 6px 10px;
+        font-size: 12px;
     }
 
     #skinsList {
-        grid-template-columns: 1fr;
+        width: 90%;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .skin-item {
+        padding: 6px;
+    }
+
+    .skin-preview {
+        width: 24px;
+        height: 24px;
+    }
+
+    .skin-name {
+        font-size: 12px;
+    }
+
+    .restart-btn {
+        padding: 8px 16px;
+        font-size: 14px;
     }
 }
