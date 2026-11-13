@@ -204,7 +204,7 @@ function getRandomPlatformType() {
     const rand = Math.random();
     if (rand < 0.7) return { type: 'normal' };
     if (rand < 0.85) return { type: 'fragile' };
-    return { type: 'moving', speedX: (Math.random() * 1 + 1) * (Math.random() > 0.5 ? 1 : -1) };
+    return { type: 'moving', speedX: (Math.random() + 1) * (Math.random() > 0.5 ? 1 : -1) };
 }
 
 function createPlatforms() {
