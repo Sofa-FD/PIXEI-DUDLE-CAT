@@ -12,7 +12,7 @@ const skinsListDiv = document.getElementById('skinsList');
 canvas.width = 400;
 canvas.height = 600;
 
-// --- КОНФИГУРАЦИЯ СКИНОВ (ЦЕНЫ ОБНОВЛЕНЫ) ---
+// --- КОНФИГУРАЦИЯ СКИНОВ ---
 const BODY_SKINS = {
     black: { name: 'Черный', color: 'black', cost: 0 },
     ginger: { name: 'Рыжий', color: '#E67E22', cost: 50 },
@@ -45,7 +45,6 @@ function getFromStorage(key, defaultValue) {
     } catch (e) { return defaultValue; }
 }
 
-// ✅ ОБНОВЛЕННЫЕ ЗАПИСИ
 let activeBodySkin = getFromStorage('pixelCatActiveBodySkin', 'black');
 let unlockedBodySkins = JSON.parse(getFromStorage('pixelCatUnlockedBodySkins', '["black"]')) || ['black'];
 let activeEyeSkin = getFromStorage('pixelCatActiveEyeSkin', 'yellow');
@@ -55,7 +54,8 @@ let unlockedAccSkins = JSON.parse(getFromStorage('pixelCatUnlockedAccSkins', '["
 
 const colors = {
     bgCanvas: '#2a2a2a', accent: '#FF0070', fragile: '#FFFFFF', moving: '#00F0FF',
-    catEyes: 'yellow', starFar: '#444', starNear: '#888', fish: '#FFB84D'
+    catEyes: 'yellow', starFar: '#444', starNear: '#888', fish: '#FFB84D',
+    enemy: '#FF2A2A'
 };
 
 let isGameOver = false;
@@ -69,7 +69,7 @@ const cat = {
     facing: 'right', scaleX: 1.0, scaleY: 1.0
 };
 
-const platforms = [], collectibles = [], particles = [], stars = [];
+const platforms = [], collectibles = [], particles = [], stars = [], enemies = [];
 const platWidth = 60, platHeight = 10, segmentWidth = 6, starCount = 50;
 
 let meowSound = null;
@@ -88,7 +88,8 @@ function switchTab(tab) {
 
 function openShop() {
     if (gameOverScreen) gameOverScreen.style.display = 'none';
-    if (shopScreen) shopScreen.style.display = 'flex'; renderShop();
+    if (shopScreen) shopScreen.style.display = 'flex';
+    renderShop();
 }
 
 function closeShop() {
@@ -96,7 +97,6 @@ function closeShop() {
     if (gameOverScreen) gameOverScreen.style.display = 'flex';
 }
 
-// ✅ ОБНОВЛЕННАЯ ФУНКЦИЯ РЕНДЕРИНГА МАГАЗИНА
 function renderShop() {
     if (!shopBalanceText || !skinsListDiv) return;
 
@@ -112,7 +112,6 @@ function renderShop() {
         const isUnlocked = unlocked.includes(id);
         const isActive = active === id;
 
-        // ✅ ОБНОВЛЕНИЕ ТИСТА ПРЕДСТАВЛЕНИЯ И ЦЕНЫ
         let previewClass = '';
         let previewStyle = '';
 
@@ -125,13 +124,7 @@ function renderShop() {
             previewStyle = `background: ${skin.color};`;
         }
 
-        // ✅ ВЕРСИЯ ОТРИСОВКИ ЦЕНЫ
-        let costText;
-        if (isUnlocked) {
-            costText = 'Куплено';
-        } else {
-            costText = skin.cost + ' 🐟';
-        }
+        const costText = isUnlocked ? 'Куплено' : skin.cost + ' 🐟';
 
         const div = document.createElement('div');
         div.className = `skin-item ${isActive ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}`;
@@ -147,7 +140,6 @@ function renderShop() {
     }
 }
 
-// ✅ ОБНОВЛЕННАЯ ЛОГИКА ПОКУПКИ И ОБОРУДОВАНИЯ СКИНА
 function buyOrEquip(id) {
     const config = currentTab === 'body' ? BODY_SKINS : (currentTab === 'eyes' ? EYE_SKINS : ACC_SKINS);
     const skin = config[id];
@@ -182,11 +174,17 @@ function buyOrEquip(id) {
     renderShop();
 }
 
-
+// --- ИНИЦИАЛИЗАЦИЯ ФОНА И ОБЪЕКТОВ ---
 function initBackground() {
     stars.length = 0;
     for (let i = 0; i < starCount; i++) {
-        stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2 + 1, speedFactor: Math.random() * 0.5 + 0.1, color: Math.random() > 0.5 ? colors.starFar : colors.starNear });
+        stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 2 + 1,
+            speedFactor: Math.random() * 0.5 + 0.1,
+            color: Math.random() > 0.5 ? colors.starFar : colors.starNear
+        });
     }
 }
 
@@ -198,9 +196,11 @@ function getRandomPlatformType() {
     return { type: 'moving', speedX: (Math.random() + 1) * (Math.random() > 0.5 ? 1 : -1) };
 }
 
-// УПРАВЛЕНИЕ РЫБКАМИ
 function createPlatforms() {
-    platforms.length = 0; collectibles.length = 0;
+    platforms.length = 0;
+    collectibles.length = 0;
+    enemies.length = 0;
+
     platforms.push({ x: cat.x - (platWidth / 2) + (cat.width / 2), y: cat.y + cat.height + 10, type: 'normal', hits: 0, broken: false, damageMap: [] });
     for (let i = 1; i < 10; i++) {
         const pType = getRandomPlatformType();
@@ -212,20 +212,42 @@ function createPlatforms() {
     }
 }
 
+// --- УПРАВЛЕНИЕ (КЛАВИАТУРА + ТАЧ ПО ПОЛОВИНАМ ЭКРАНА) ---
 const keys = {};
 window.addEventListener('keydown', e => keys[e.code] = true);
 window.addEventListener('keyup', e => keys[e.code] = false);
 
-function setupControlButton(buttonId, keyName) {
-    const button = document.getElementById(buttonId);
-    if (!button) return;
-    const startAction = (e) => { e.preventDefault(); keys[keyName] = true; };
-    const endAction = () => { keys[keyName] = false; };
-    button.addEventListener('touchstart', startAction); button.addEventListener('touchend', endAction);
-    button.addEventListener('mousedown', startAction); button.addEventListener('mouseup', endAction);
-}
-setupControlButton('btn-left', 'ArrowLeft'); setupControlButton('btn-right', 'ArrowRight');
+function handleTouchControl(e) {
+    if (isGameOver) return;
+    if (e.cancelable) e.preventDefault();
 
+    if (e.touches.length === 0) {
+        keys['ArrowLeft'] = false;
+        keys['ArrowRight'] = false;
+        return;
+    }
+
+    const latestTouch = e.touches[e.touches.length - 1];
+    const screenCenter = window.innerWidth / 2;
+
+    if (latestTouch.clientX < screenCenter) {
+        keys['ArrowLeft'] = true;
+        keys['ArrowRight'] = false;
+    } else {
+        keys['ArrowRight'] = true;
+        keys['ArrowLeft'] = false;
+    }
+}
+
+window.addEventListener('touchstart', handleTouchControl, { passive: false });
+window.addEventListener('touchmove', handleTouchControl, { passive: false });
+window.addEventListener('touchend', handleTouchControl, { passive: false });
+window.addEventListener('touchcancel', () => {
+    keys['ArrowLeft'] = false;
+    keys['ArrowRight'] = false;
+});
+
+// --- ЧАСТИЦЫ И ОТРИСОВКА ---
 function spawnParticles(x, y, color) {
     for (let i = 0; i < 8; i++) {
         particles.push({ x: x + Math.random() * platWidth, y: y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, size: Math.random() * 4 + 2, color: color, life: 1.0 });
@@ -316,6 +338,45 @@ function drawCollectibles() {
     });
 }
 
+function drawEnemies() {
+    enemies.forEach(enemy => {
+        if (enemy.defeated) return;
+        ctx.save();
+        ctx.translate(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+        if (enemy.speedX < 0) ctx.scale(-1, 1);
+
+        // Тело птицы
+        ctx.fillStyle = colors.enemy;
+        ctx.fillRect(-12, -6, 22, 12);
+
+        // Голова
+        ctx.fillRect(6, -10, 10, 10);
+
+        // Хвост
+        ctx.fillRect(-18, -4, 6, 4);
+        ctx.fillRect(-16, 0, 4, 4);
+
+        // Клюв
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.moveTo(16, -7);
+        ctx.lineTo(22, -4);
+        ctx.lineTo(16, -1);
+        ctx.fill();
+
+        // Глаз
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(11, -8, 3, 3);
+
+        // Анимация взмаха крыла
+        const wingFlap = Math.sin(Date.now() * 0.025) * 7;
+        ctx.fillStyle = '#FF7070';
+        ctx.fillRect(-4, -2 + (wingFlap > 0 ? 0 : wingFlap), 10, Math.abs(wingFlap) + 3);
+
+        ctx.restore();
+    });
+}
+
 function drawParticles() {
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
@@ -326,39 +387,116 @@ function drawParticles() {
     }
 }
 
+function drawControlHint() {
+    const maxHintHeight = 600;
+    if (totalHeight >= maxHintHeight) return;
+
+    ctx.save();
+    let alpha = 0.6;
+    if (totalHeight > 350) {
+        alpha = (1 - (totalHeight - 350) / (maxHintHeight - 350)) * 0.6;
+    }
+    ctx.globalAlpha = Math.max(0, alpha);
+
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, canvas.height - 110);
+    ctx.lineTo(canvas.width / 2, canvas.height - 30);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 16px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('← ВЛЕВО', canvas.width * 0.25, canvas.height - 65);
+    ctx.fillText('ВПРАВО →', canvas.width * 0.75, canvas.height - 65);
+
+    ctx.restore();
+}
+
 function drawScore() {
     ctx.fillStyle = 'white'; ctx.font = '20px IBM Plex Mono';
+    ctx.textAlign = 'left';
     ctx.fillText(`Score: ${Math.floor(score)}`, 20, 30);
     ctx.fillText(`Рыбы: ${collectiblesCount}`, 20, 55);
 }
 
+// --- ОБНОВЛЕНИЕ ФИЗИКИ И ПЕРЕРАБОТКА ---
 function update() {
     if (isGameOver) return;
     if (keys['ArrowLeft'] || keys['KeyA']) { cat.x -= cat.speed; cat.facing = 'left'; }
     if (keys['ArrowRight'] || keys['KeyD']) { cat.x += cat.speed; cat.facing = 'right'; }
     if (cat.x + cat.width < 0) cat.x = canvas.width;
     if (cat.x > canvas.width) cat.x = -cat.width;
+
     cat.dy += cat.gravity; cat.y += cat.dy;
     const stretch = Math.abs(cat.dy) * 0.0400;
     cat.scaleY = 1.0 + stretch; cat.scaleX = 1.0 - stretch * 0.5;
+
     const scrollThreshold = 250;
     if (cat.y < scrollThreshold) {
         let diff = scrollThreshold - cat.y;
         cat.y = scrollThreshold; totalHeight += diff; score += diff * 0.1;
-        platforms.forEach(p => p.y += diff); stars.forEach(s => s.y += diff * s.speedFactor);
+        platforms.forEach(p => p.y += diff);
+        stars.forEach(s => s.y += diff * s.speedFactor);
         collectibles.forEach(c => c.y += diff);
+        enemies.forEach(e => e.y += diff);
     }
+
     platforms.forEach(p => {
         if (p.type === 'moving') {
             p.x += p.speedX;
             if (p.x <= 0 || p.x + platWidth >= canvas.width) p.speedX *= -1;
         }
     });
-    collectibles.forEach(item => {
-        if (!item.collected && cat.x < item.x + item.width && cat.x + cat.width > item.x && cat.y < item.y + item.height && cat.y + cat.height > item.y) {
-            item.collected = true; collectiblesCount++; score += 50;
+
+    // Движение птиц и проверка столкновения
+    enemies.forEach(enemy => {
+        if (enemy.defeated) return;
+        enemy.x += enemy.speedX;
+        if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
+            enemy.speedX *= -1;
+        }
+
+        const pad = 3;
+        const isColliding =
+            cat.x + pad < enemy.x + enemy.width - pad &&
+            cat.x + cat.width - pad > enemy.x + pad &&
+            cat.y + pad < enemy.y + enemy.height - pad &&
+            cat.y + cat.height - pad > enemy.y + pad;
+
+        if (isColliding) {
+            // Проверяем, падает ли кот сверху на верхнюю половину птицы
+            const prevCatBottom = (cat.y - cat.dy) + cat.height;
+            const isStompFromAbove = cat.dy > 0 && prevCatBottom <= enemy.y + enemy.height * 0.65;
+
+            if (isStompFromAbove) {
+                // Прыжок по верху птицы
+                enemy.defeated = true;
+                cat.scaleY = 0.10;
+                cat.scaleX = 0.40;
+                cat.dy = cat.jumpForce * 1.15;
+                score += 100;
+                spawnParticles(enemy.x, enemy.y, colors.enemy);
+            } else {
+                // Удар снизу или сбоку = проигрыш
+                spawnParticles(cat.x, cat.y, colors.enemy);
+                endGame();
+            }
         }
     });
+
+    collectibles.forEach(item => {
+        if (!item.collected && cat.x < item.x + item.width && cat.x + cat.width > item.x && cat.y < item.y + item.height && cat.y + cat.height > item.y) {
+            item.collected = true;
+            collectiblesCount++;
+            score += 50;
+            spawnParticles(item.x, item.y, colors.fish);
+        }
+    });
+
     if (cat.dy > 0) {
         platforms.forEach(p => {
             if (!p.broken && cat.x < p.x + platWidth && cat.x + cat.width > p.x && cat.y + cat.height > p.y && cat.y + cat.height < p.y + platHeight + cat.dy) {
@@ -397,14 +535,11 @@ function handleRecycle() {
 
             p.y = highestY - (60 + Math.random() * 40);
             p.x = Math.random() * (canvas.width - platWidth);
-            p.type = pType.type;
-            p.broken = false;
-            p.hits = 0;
-            p.damageMap = [];
+            p.type = pType.type; p.broken = false; p.hits = 0; p.damageMap = [];
             if (pType.speedX) p.speedX = pType.speedX;
 
             // Генерация новой рыбки над переработанной платформой (шанс 40%)
-            if (Math.random() < 0.1) {
+            if (Math.random() < 0.4) {
                 collectibles.push({
                     x: p.x + Math.random() * (platWidth - 15),
                     y: p.y - 25 - Math.random() * 15,
@@ -414,26 +549,38 @@ function handleRecycle() {
                     collected: false
                 });
             }
+
+            // Постоянный спавн птиц после 400 пикселей высоты (шанс 18%)
+            if (totalHeight > 400 && Math.random() < 0.18) {
+                const tooClose = enemies.some(e => Math.abs(e.y - (p.y - 35)) < 180);
+                if (!tooClose) {
+                    enemies.push({
+                        x: Math.random() * (canvas.width - 36),
+                        y: p.y - 35,
+                        width: 36,
+                        height: 16,
+                        speedX: (Math.random() * 1.5 + 1.2) * (Math.random() > 0.5 ? 1 : -1),
+                        defeated: false
+                    });
+                }
+            }
         }
     });
 
-    // Удаляем рыбок, которые уже собраны или улетели за нижний край экрана
     for (let i = collectibles.length - 1; i >= 0; i--) {
         if (collectibles[i].collected || collectibles[i].y > canvas.height) {
             collectibles.splice(i, 1);
         }
     }
 
-    stars.forEach(s => {
-        if (s.y > canvas.height) {
-            s.y = 0;
-            s.x = Math.random() * canvas.width;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        if (enemies[i].defeated || enemies[i].y > canvas.height) {
+            enemies.splice(i, 1);
         }
-    });
+    }
 
-
+    stars.forEach(s => { if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; } });
 }
-
 
 function endGame() {
     try {
@@ -458,8 +605,6 @@ function resetGame() {
     if (gameOverScreen) gameOverScreen.style.display = 'none';
     if (shopScreen) shopScreen.style.display = 'none';
     createPlatforms(); initBackground(); particles.length = 0;
-
-    // ✅ ОБНОВЛЕНИЕ: ОТРИСОВАТЬ МАГАЗИН ПОСЛЕ СБРОСА ИГРЫ
     renderShop();
 }
 
@@ -472,43 +617,12 @@ function loop() {
             ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill();
         });
 
-        drawPlatforms(); drawCollectibles(); drawParticles(); drawCat(); drawScore();
+        drawPlatforms(); drawCollectibles(); drawEnemies(); drawParticles(); drawCat();
+        drawControlHint();
+        drawScore();
     } catch (e) { console.error(e); }
     requestAnimationFrame(loop);
 }
-
-// --- СЕНСОРНОЕ УПРАВЛЕНИЕ ПО ПОЛОВИНАМ ЭКРАНА ---
-function handleTouchControl(e) {
-    // Не перехватываем касания, если открыто меню проигрыша или магазин
-    if (isGameOver) return;
-    if (e.cancelable) e.preventDefault();
-
-    if (e.touches.length === 0) {
-        keys['ArrowLeft'] = false;
-        keys['ArrowRight'] = false;
-        return;
-    }
-
-    // Берем последнее (самое свежее) касание пальца
-    const latestTouch = e.touches[e.touches.length - 1];
-    const screenCenter = window.innerWidth / 2;
-
-    if (latestTouch.clientX < screenCenter) {
-        keys['ArrowLeft'] = true;
-        keys['ArrowRight'] = false;
-    } else {
-        keys['ArrowRight'] = true;
-        keys['ArrowLeft'] = false;
-    }
-}
-
-window.addEventListener('touchstart', handleTouchControl, { passive: false });
-window.addEventListener('touchmove', handleTouchControl, { passive: false });
-window.addEventListener('touchend', handleTouchControl, { passive: false });
-window.addEventListener('touchcancel', () => {
-    keys['ArrowLeft'] = false;
-    keys['ArrowRight'] = false;
-});
 
 // --- ЗАПУСК ИГРЫ ---
 initBackground();
